@@ -151,6 +151,42 @@ services:
       service: mercure
     container_name: ems-mono-mercure
 
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:latest
+    ports:
+        - "8474:8474"
+        - "9001:9001"
+    healthcheck:
+        test:
+            - CMD
+            - /toxiproxy-cli
+            - -h
+            - localhost:8474
+            - list
+        interval: 2s
+        timeout: 2s
+        retries: 10
+
+  toxiproxy-init:
+    image: ghcr.io/shopify/toxiproxy:latest
+    depends_on:
+        toxiproxy:
+            condition: service_healthy
+        minio:
+            condition: service_started
+    entrypoint:
+        - /toxiproxy-cli
+    command:
+        - -h
+        - toxiproxy:8474
+        - create
+        - --listen
+        - 0.0.0.0:9001
+        - --upstream
+        - minio:9000
+        - s3
+    restart: "no"
+
   sandbox:
         image: docker.io/smalswebtech/base-php:8.4-cli-dev
         user: ${DOCKER_USER-1000}
